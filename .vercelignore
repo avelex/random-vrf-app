@@ -1,8 +1,0 @@
-.git
-.github
-.svelte-kit
-node_modules
-tests
-src
-static
-!build
