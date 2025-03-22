@@ -80,14 +80,23 @@
     return `${requestId.substring(0, 4)}...${requestId.substring(requestId.length - 4)}`;
   }
   
-  // Calculate elapsed time in seconds
+  // Calculate elapsed time between blockchain transaction timestamps
   function calculateElapsedTime(startTime: number | null, endTime: number | null): string {
     if (!startTime || !endTime) return '';
     
     const elapsedMs = endTime - startTime;
-    const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+    const totalSeconds = Math.floor(elapsedMs / 1000);
     
-    return `${elapsedSeconds} seconds`;
+    // Format the time more precisely
+    if (totalSeconds < 60) {
+      // Less than a minute, show seconds
+      return `${totalSeconds} seconds`;
+    } else {
+      // More than a minute, show minutes and seconds
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes} minutes ${seconds} seconds`;
+    }
   }
 </script>
 
@@ -250,7 +259,7 @@
                   View ({formatTxHash($randomNumberStore.responseTxHash || $randomNumberStore.txHash)})
                 </a>
                 {#if $randomNumberStore.requestTimestamp && $randomNumberStore.responseTimestamp}
-                  <span class="time-indicator">took {calculateElapsedTime($randomNumberStore.requestTimestamp, $randomNumberStore.responseTimestamp)}</span>
+                  <span class="time-indicator">took {calculateElapsedTime($randomNumberStore.requestTimestamp, $randomNumberStore.responseTimestamp)} 🚀</span>
                 {/if}
               </div>
             {/if}

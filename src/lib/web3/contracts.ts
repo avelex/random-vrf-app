@@ -74,7 +74,7 @@ export async function requestRandomNumber() {
       responseTxHash: null,
       randomNumber: null,
       error: null,
-      requestTimestamp: Date.now(),
+      requestTimestamp: Date.now(), // This will be updated with the actual transaction timestamp
       responseTimestamp: null,
       randomNetworkRequestReceived: false,
       randomNetworkRequestTxHash: null,
@@ -155,13 +155,22 @@ export async function requestRandomNumber() {
           const currentBlockNumber = await publicClient.getBlockNumber();
           console.log('Current Arbitrum Sepolia block number:', currentBlockNumber);
           
-          // Update store with request ID, waiting status, and block number
+          // Get the block to extract the timestamp
+          const block = await publicClient.getBlock({
+            blockNumber: receipt.blockNumber
+          });
+          
+          // Extract timestamp from block (in seconds, convert to milliseconds)
+          const blockTimestamp = Number(block.timestamp) * 1000;
+          
+          // Update store with request ID, waiting status, block number, and actual transaction timestamp
           randomNumberStore.update((state: RandomNumberState) => ({
             ...state,
             isRequesting: false,
             isWaitingForRandomness: true,
             requestId: requestId,
-            arbitrumSepoliaBlockNumber: Number(currentBlockNumber)
+            arbitrumSepoliaBlockNumber: Number(currentBlockNumber),
+            requestTimestamp: blockTimestamp // Use actual block timestamp
           }));
           
           // Start listening for events on Random Network (Steps 2 and 3)
@@ -238,7 +247,7 @@ async function listenForRandomnessReceived(requestId: string) {
       args: {
         requestId: requestId as `0x${string}`
       },
-      onLogs: (logs) => {
+      onLogs: async (logs) => {
         console.log('Step 4: RandomnessReceived event detected:', logs);
         
         try {
@@ -260,6 +269,22 @@ async function listenForRandomnessReceived(requestId: string) {
           const randomness = BigInt(randomnessHex);
           console.log('Extracted randomness:', randomness.toString());
           
+          // Get the public client
+          const publicClient = getPublicClient(config);
+          
+          // Get the transaction receipt to extract the block number
+          const receipt = await publicClient.getTransactionReceipt({
+            hash: txHash as `0x${string}`
+          });
+          
+          // Get the block to extract the timestamp
+          const block = await publicClient.getBlock({
+            blockNumber: receipt.blockNumber
+          });
+          
+          // Extract timestamp from block (in seconds, convert to milliseconds)
+          const blockTimestamp = Number(block.timestamp) * 1000;
+          
           // Update store with randomness and reset isWaitingForStep4 flag
           randomNumberStore.update((state: RandomNumberState) => ({
             ...state,
@@ -267,19 +292,21 @@ async function listenForRandomnessReceived(requestId: string) {
             isWaitingForStep4: false,
             randomNumber: randomness.toString(),
             responseTxHash: txHash,
-            responseTimestamp: Date.now()
+            responseTimestamp: blockTimestamp // Use actual block timestamp
           }));
         } catch (error) {
           console.error('Error extracting randomness from event:', error);
           // Use a fallback random number for demo purposes
           const fallbackRandomness = BigInt(Math.floor(Math.random() * 1000000));
+          // For fallback/demo, still use the current time
+          const currentTime = Date.now();
           randomNumberStore.update((state: RandomNumberState) => ({
             ...state,
             isWaitingForRandomness: false,
             isWaitingForStep4: false,
             randomNumber: fallbackRandomness.toString(),
-            responseTxHash: 'simulated-tx-' + Date.now(),
-            responseTimestamp: Date.now()
+            responseTxHash: 'simulated-tx-' + currentTime,
+            responseTimestamp: currentTime
           }));
         }
 
