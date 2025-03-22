@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Soyuz Grotesk';
+  src: url('/SoyuzGroteskBold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --color-bg: #ffffff;
   --color-text: #000000;
@@ -5,7 +13,8 @@
   --color-button-bg: #000000;
   --color-button-text: #ffffff;
   --color-button-hover: #333333;
-  --font-family: 'Francois One', sans-serif;
+  --font-family: 'Roboto', sans-serif;
+  --logo-font-family: 'Soyuz Grotesk', sans-serif;
 }
 
 body {
@@ -36,14 +45,15 @@ body {
 }
 
 .logo {
-  font-size: 48px;
+  font-family: var(--logo-font-family);
+  font-size: 52px;
   letter-spacing: 1px;
   line-height: 1;
   display: flex;
   align-items: center;
   color: #000;
-  text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
-  font-weight: 400;
+  /* text-shadow: 1px 1px 0 rgba(0,0,0,0.15); */
+  font-weight: bold;
 }
 
 .main {
@@ -94,10 +104,11 @@ h1 {
 }
 
 .step-container {
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   width: 100%;
+  padding-left: 0.5rem;
 }
 
 .step-container:last-child {
@@ -109,14 +120,15 @@ h1 {
 .step-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  font-weight: 600;
-  font-size: 1.3rem;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .step-content {
-  margin-left: 1.5rem;
+  margin-left: 0;
+  padding-top: 0.5rem;
 }
 
 .copy-wrapper {
@@ -124,7 +136,9 @@ h1 {
   align-items: center;
   gap: 0.5rem;
   margin: 0.5rem 0;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding-left: 0.5rem;
 }
 
 .copy-button {
@@ -145,8 +159,9 @@ h1 {
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-left: 0.5rem;
+  font-size: 0.9rem;
 }
 
 .success-mark {
@@ -178,9 +193,8 @@ h1 {
 }
 
 .random-number {
-  font-size: 3.5rem;
-  margin: 2rem 0;
-  text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+  font-size: 2.0rem;
+  /* text-shadow: 1px 1px 0 rgba(0,0,0,0.15); */
   letter-spacing: 1px;
 }
 
@@ -192,10 +206,36 @@ h1 {
   gap: 0.5rem;
 }
 
+.network-warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.network-debug {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-top: 0.5rem;
+}
+
+.network-switch-button {
+  margin: 0.75rem auto 0;
+  background-color: #f59e0b;
+  border: none;
+}
+
+.network-switch-button:hover {
+  background-color: #d97706;
+}
+
 .spinner {
   display: inline-block;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.2rem;
+  height: 1.2rem;
   border: 2px solid rgba(0, 0, 0, 0.1);
   border-left-color: var(--color-border);
   border-radius: 50%;

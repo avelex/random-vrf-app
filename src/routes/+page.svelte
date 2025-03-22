@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { walletStore, connectWallet, formatAddress, initWallet } from '$lib/web3/wallet';
+  import { walletStore, connectWallet, formatAddress, initWallet, switchToArbitrumSepolia, checkNetwork } from '$lib/web3/wallet';
   import { randomNumberStore, requestRandomNumber, formatRandomNumber } from '$lib/web3/contracts';
-  import { EXPLORER_URL } from '$lib/web3/config';
+  import { EXPLORER_URL, RANDOM_EXPLORER_URL } from '$lib/web3/config';
 
   // For copy functionality
   type CopyState = {
@@ -17,13 +17,34 @@
 
   onMount(() => {
     initWallet();
+    // Force a network check on mount
+    checkNetwork().catch(err => console.error('Error checking network on mount:', err));
   });
 
   function handleConnectWallet() {
     connectWallet();
   }
 
-  function handleRequestRandomness() {
+  async function handleRequestRandomness() {
+    // Check if connected to wallet
+    if (!$walletStore.isConnected) {
+      alert('Please connect your wallet first');
+      return;
+    }
+    
+    // Check if on Arbitrum Sepolia network
+    const isCorrectNetwork = await checkNetwork();
+    if (!isCorrectNetwork) {
+      // If not on correct network, prompt to switch
+      const switchConfirmed = confirm('You need to be on Arbitrum Sepolia network to use this feature. Would you like to switch networks now?');
+      
+      if (switchConfirmed) {
+        switchToArbitrumSepolia();
+      }
+      return;
+    }
+    
+    // If all checks pass, request the random number
     requestRandomNumber();
   }
 
@@ -90,13 +111,22 @@
 
   <main class="main">
     
+    {#if $walletStore.isConnected && $walletStore.chainId !== null && !$walletStore.isArbitrumSepolia}
+      <div class="network-warning">
+        <p>Please switch to Arbitrum Sepolia network to use this app</p>
+        <p class="network-debug">Current network: Chain ID {$walletStore.chainId}</p>
+      </div>
+    {/if}
+
     <button 
       class="button" 
-      on:click={handleRequestRandomness}
-      disabled={!$walletStore.isConnected || $randomNumberStore.isRequesting}
+      on:click={$walletStore.isConnected && !$walletStore.isArbitrumSepolia ? switchToArbitrumSepolia : handleRequestRandomness}
+      disabled={!$walletStore.isConnected || ($randomNumberStore.isRequesting && $walletStore.isArbitrumSepolia)}
     >
       {#if $randomNumberStore.isRequesting}
         Requesting...
+      {:else if !$walletStore.isArbitrumSepolia && $walletStore.isConnected}
+        Switch to Arbitrum Sepolia
       {:else}
         Give me Random Number
       {/if}
@@ -143,11 +173,68 @@
           </div>
         </div>
         
-        <!-- Step 2: Receive Randomness -->
+        <!-- Step 2: Receive VRF Request -->
         <div class="step-container">
           <div class="step-header">
-            <span>Step 2: Receive Randomness</span>
-            {#if $randomNumberStore.requestId && !$randomNumberStore.randomNumber}
+            <span>Step 2: Receive VRF Request</span>
+            {#if $randomNumberStore.requestId && !$randomNumberStore.randomNetworkRequestReceived}
+              <div class="status-indicator">
+                <div class="spinner"></div>
+              </div>
+            {:else if $randomNumberStore.randomNetworkRequestReceived}
+              <div class="status-indicator">
+                <div class="success-mark">✓</div>
+                {#if $randomNumberStore.randomNetworkRequestTxHash}
+                  <a 
+                    href="{RANDOM_EXPLORER_URL + $randomNumberStore.randomNetworkRequestTxHash}" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    class="explorer-link"
+                  >
+                    View on Random Explorer ({formatTxHash($randomNumberStore.randomNetworkRequestTxHash)})
+                  </a>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </div>
+        
+        <!-- Step 3: VRF Executed -->
+        <div class="step-container">
+          <div class="step-header">
+            <span>Step 3: VRF Executed</span>
+            {#if $randomNumberStore.randomNetworkRequestReceived && !$randomNumberStore.randomNetworkVrfExecuted}
+              <div class="status-indicator">
+                <div class="spinner"></div>
+              </div>
+            {:else if $randomNumberStore.randomNetworkVrfExecuted}
+              <div class="status-indicator">
+                <div class="success-mark">✓</div>
+                {#if $randomNumberStore.randomNetworkVrfTxHash}
+                  <a 
+                    href="{RANDOM_EXPLORER_URL + $randomNumberStore.randomNetworkVrfTxHash}" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    class="explorer-link"
+                  >
+                    View on Random Explorer ({formatTxHash($randomNumberStore.randomNetworkVrfTxHash)})
+                  </a>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </div>
+        
+        <!-- Step 4: Receive Randomness -->
+        <div class="step-container">
+          <div class="step-header">
+            <span>Step 4: Receive Randomness</span>
+            {#if $randomNumberStore.isWaitingForStep4}
+              <div class="status-indicator">
+                <div class="spinner"></div>
+                <span class="waiting-text">Waiting for randomness...</span>
+              </div>
+            {:else if $randomNumberStore.requestId && !$randomNumberStore.randomNumber && $randomNumberStore.randomNetworkVrfExecuted}
               <div class="status-indicator">
                 <div class="spinner"></div>
               </div>
@@ -168,24 +255,21 @@
               </div>
             {/if}
           </div>
-          
-          <div class="step-content">
-            {#if $randomNumberStore.randomNumber}
-              <div class="separator"></div>
-              <div class="copy-wrapper">
-                <div class="random-number">
-                  {formatRandomNumber($randomNumberStore.randomNumber)}
-                </div>
-                <button 
-                  class="copy-button" 
-                  on:click={() => copyToClipboard($randomNumberStore.randomNumber || '', 'randomNumber')}
-                >
-                  {copyState.randomNumber ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            {/if}
-          </div>
         </div>
+        
+        {#if $randomNumberStore.randomNumber}
+          <div class="copy-wrapper">
+            <div class="random-number">
+              {formatRandomNumber($randomNumberStore.randomNumber)}
+            </div>
+            <button 
+              class="copy-button" 
+              on:click={() => copyToClipboard($randomNumberStore.randomNumber || '', 'randomNumber')}
+            >
+              {copyState.randomNumber ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        {/if}
       </div>
     {/if}
 

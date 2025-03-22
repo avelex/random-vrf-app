@@ -13,3 +13,11 @@ export const VRF_REQUEST_ADDRESS = '0x008635105b348396B6ccD18BB715A9b6Db0E0D12';
 
 // Arbitrum Sepolia Explorer URL
 export const EXPLORER_URL = 'https://sepolia.arbiscan.io/tx/';
+
+// Random Network Configuration
+export const RANDOM_NETWORK_RPC = 'http://167.172.174.224:8547';
+export const RANDOM_NETWORK_CHAIN_ID = 1918;
+export const RANDOM_EXPLORER_URL = 'https://testnet.random-network.org/tx/';
+
+// Random Network Contract Addresses
+export const RANDOM_VRF_CLIENT_ADDRESS = '0x9bF90104DC52b645038780f5e4410eC036DD273d';
