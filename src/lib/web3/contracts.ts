@@ -51,24 +51,8 @@ export const randomNumberStore = writable<RandomNumberState>({
   isWaitingForStep4: false,
 });
 
-// Create a custom fetch function that ignores SSL errors for our specific endpoint
-const customFetch = async (url: string, options: RequestInit) => {
-  // Only apply special handling to our Random Network RPC
-  if (url === RANDOM_NETWORK_RPC) {
-    options.mode = 'cors';
-    options.cache = 'no-cache';
-  }
-  return fetch(url, options);
-};
-
-// Create provider for Random Network with custom fetch function
+// Create provider for Random Network
 const randomNetworkProvider = new JsonRpcProvider(RANDOM_NETWORK_RPC);
-
-// Override the fetch function if we're in a browser environment
-if (typeof window !== 'undefined') {
-  // @ts-ignore - Directly setting the fetch property which is not in the type definition
-  randomNetworkProvider.fetch = customFetch;
-}
 
 // Create contract instance for Random Network VRF Core
 const randomVrfCoreContract = new Contract(
