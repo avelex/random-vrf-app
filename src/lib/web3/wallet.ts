@@ -1,10 +1,8 @@
 import { writable } from 'svelte/store';
 import { getAccount, connect, disconnect, getChainId } from '@wagmi/core';
 import { injected } from '@wagmi/connectors';
-import { config } from './config';
-
-// Arbitrum Sepolia chain ID
-const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
+import { config, SUPPORTED_NETWORKS, DEFAULT_NETWORK, getNetworkConfig } from './config';
+import type { NetworkConfig } from './config';
 
 type WalletState = {
   address: string;
@@ -12,7 +10,8 @@ type WalletState = {
   isConnecting: boolean;
   error: string | null;
   chainId: number | null;
-  isArbitrumSepolia: boolean;
+  currentNetwork: NetworkConfig | null;
+  isSupportedNetwork: boolean;
 };
 
 export const walletStore = writable<WalletState>({
@@ -21,7 +20,14 @@ export const walletStore = writable<WalletState>({
   isConnecting: false,
   error: null,
   chainId: null,
-  isArbitrumSepolia: false,
+  currentNetwork: null,
+  isSupportedNetwork: false,
+});
+
+// Create a store for the network list
+export const networkStore = writable({
+  networks: SUPPORTED_NETWORKS,
+  selectedNetwork: DEFAULT_NETWORK,
 });
 
 export async function connectWallet() {
@@ -70,7 +76,7 @@ export function formatAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-// Check if user is on Arbitrum Sepolia network
+// Check if user is on a supported network
 export async function checkNetwork() {
   try {
     let chainId;
@@ -96,35 +102,54 @@ export async function checkNetwork() {
       console.log('Wagmi chainId:', chainId);
     }
     
-    // Check if it matches Arbitrum Sepolia
-    const isArbitrumSepolia = chainId === ARBITRUM_SEPOLIA_CHAIN_ID;
-    console.log('Is Arbitrum Sepolia:', isArbitrumSepolia);
+    // Get the current network config based on chain ID
+    const currentNetwork = getNetworkConfig(chainId);
     
-    // Update the store
+    // Check if it's a supported network
+    const isSupportedNetwork = SUPPORTED_NETWORKS.some(network => network.chainId === chainId);
+    console.log('Current network:', currentNetwork.name);
+    console.log('Is supported network:', isSupportedNetwork);
+    
+    // Update the stores
     walletStore.update((state: WalletState) => ({
       ...state,
       chainId: chainId,
-      isArbitrumSepolia: isArbitrumSepolia,
+      currentNetwork: currentNetwork,
+      isSupportedNetwork: isSupportedNetwork,
     }));
     
-    return isArbitrumSepolia;
+    networkStore.update(state => ({
+      ...state,
+      selectedNetwork: currentNetwork
+    }));
+    
+    return isSupportedNetwork;
   } catch (error) {
     console.error('Failed to check network:', error);
     walletStore.update((state: WalletState) => ({
       ...state,
       chainId: null,
-      isArbitrumSepolia: false,
+      currentNetwork: null,
+      isSupportedNetwork: false,
     }));
     return false;
   }
 }
 
-// Function to switch to Arbitrum Sepolia
-export function switchToArbitrumSepolia() {
+// Function to switch to a specific network
+export function switchToNetwork(network: NetworkConfig) {
   if (window.ethereum) {
+    const chainIdHex = `0x${network.chainId.toString(16)}`;
+    
+    // Update the selected network in the store
+    networkStore.update(state => ({
+      ...state,
+      selectedNetwork: network
+    }));
+    
     window.ethereum.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: `0x${ARBITRUM_SEPOLIA_CHAIN_ID.toString(16)}` }],
+      params: [{ chainId: chainIdHex }],
     }).catch((switchError: any) => {
       // This error code indicates that the chain has not been added to MetaMask
       if (switchError.code === 4902) {
@@ -132,15 +157,15 @@ export function switchToArbitrumSepolia() {
           method: 'wallet_addEthereumChain',
           params: [
             {
-              chainId: `0x${ARBITRUM_SEPOLIA_CHAIN_ID.toString(16)}`,
-              chainName: 'Arbitrum Sepolia',
+              chainId: chainIdHex,
+              chainName: network.name,
               nativeCurrency: {
                 name: 'ETH',
                 symbol: 'ETH',
                 decimals: 18,
               },
-              rpcUrls: ['https://sepolia-rollup.arbitrum.io/rpc'],
-              blockExplorerUrls: ['https://sepolia.arbiscan.io'],
+              rpcUrls: [network.rpcUrl],
+              blockExplorerUrls: [network.explorerUrl.replace('/tx/', '')],
             },
           ],
         });
@@ -151,6 +176,14 @@ export function switchToArbitrumSepolia() {
         await checkNetwork();
       }, 1000);
     });
+  }
+}
+
+// For backward compatibility
+export function switchToArbitrumSepolia() {
+  const arbitrumSepoliaNetwork = SUPPORTED_NETWORKS.find(network => network.chainId === 421614);
+  if (arbitrumSepoliaNetwork) {
+    switchToNetwork(arbitrumSepoliaNetwork);
   }
 }
 

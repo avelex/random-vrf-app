@@ -1,7 +1,9 @@
 import { writable } from 'svelte/store';
 import { parseEther, JsonRpcProvider, Contract } from 'ethers';
 import { getPublicClient, getWalletClient, waitForTransactionReceipt, watchContractEvent } from '@wagmi/core';
-import { config, VRF_REQUEST_CLIENT_ADDRESS, VRF_REQUEST_ADDRESS, RANDOM_VRF_CLIENT_ADDRESS, RANDOM_NETWORK_RPC, RANDOM_NETWORK_CHAIN_ID } from './config';
+import { config, RANDOM_VRF_CLIENT_ADDRESS, RANDOM_NETWORK_RPC, RANDOM_NETWORK_CHAIN_ID } from './config';
+import { networkStore } from './wallet';
+import type { NetworkConfig } from './config';
 
 // Import contract ABIs
 import VRFRequestClientABI from '../abi/VRFRequestClient.json';
@@ -91,9 +93,22 @@ export async function requestRandomNumber() {
     // Get public client
     const publicClient = getPublicClient(config);
 
+    // Get current network configuration
+    let currentNetwork!: NetworkConfig;
+    const unsubscribe = networkStore.subscribe(store => {
+      if (store.selectedNetwork) {
+        currentNetwork = store.selectedNetwork;
+      }
+    });
+    unsubscribe();
+
+    if (!currentNetwork) {
+      throw new Error('No network selected');
+    }
+
     // Prepare transaction
     const { request } = await publicClient.simulateContract({
-      address: VRF_REQUEST_CLIENT_ADDRESS as `0x${string}`,
+      address: currentNetwork.vrfRequestClientAddress as `0x${string}`,
       abi: VRFRequestClientABI.abi,
       functionName: 'requestRandomness',
       args: ['0x', BigInt(100000)],
@@ -127,9 +142,25 @@ export async function requestRandomNumber() {
         });
         console.log('All transaction logs:', allLogs.logs);
         
+        // Get current network configuration
+        let currentNetwork!: NetworkConfig;
+        const unsubscribe = networkStore.subscribe(store => {
+          if (store.selectedNetwork) {
+            currentNetwork = store.selectedNetwork;
+          }
+        });
+        unsubscribe();
+
+        if (!currentNetwork) {
+          throw new Error('No network selected');
+        }
+        
+        // After the null check, currentNetwork is definitely a NetworkConfig
+        const network: NetworkConfig = currentNetwork;
+
         // Try to find the RandomnessRequested event
         const logs = await publicClient.getLogs({
-          address: VRF_REQUEST_ADDRESS as `0x${string}`,
+          address: network.vrfRequestAddress as `0x${string}`,
           event: {
             type: 'event',
             name: 'RandomnessRequested',
@@ -239,9 +270,30 @@ async function listenForRandomnessReceived(requestId: string) {
   try {
     console.log('Step 4: Setting up listener for RandomnessReceived event for requestId:', requestId);
     
-    // Set up listener for RandomnessReceived event
+    // Get current network configuration
+    let currentNetwork: NetworkConfig | null = null;
+    const unsubscribe = networkStore.subscribe(store => {
+      currentNetwork = store.selectedNetwork;
+    });
+    unsubscribe();
+
+    if (!currentNetwork) {
+      throw new Error('No network selected');
+    }
+    
+    // After the null check, currentNetwork is definitely a NetworkConfig
+    const network: NetworkConfig = currentNetwork;
+    
+    // For Optimism Sepolia, we'll use a more robust approach with polling
+    if (network.chainId === 11155420) { // Optimism Sepolia chain ID
+      console.log('Using enhanced polling method for Optimism Sepolia');
+      await pollForRandomnessReceivedEvent(requestId, network);
+      return;
+    }
+    
+    // For other networks, use the standard event listener
     const unwatch = watchContractEvent(config, {
-      address: VRF_REQUEST_ADDRESS as `0x${string}`,
+      address: network.vrfRequestAddress as `0x${string}`,
       abi: VRFRequestV1ABI.abi,
       eventName: 'RandomnessReceived',
       args: {
@@ -249,67 +301,7 @@ async function listenForRandomnessReceived(requestId: string) {
       },
       onLogs: async (logs) => {
         console.log('Step 4: RandomnessReceived event detected:', logs);
-        
-        try {
-          // Extract data from the log
-          // For RandomnessReceived event, the randomness value is in the data field (not indexed)
-          // The event structure is: event RandomnessReceived(bytes32 indexed requestId, uint256 randomness, uint8 status)
-          const log = logs[0];
-          const txHash = log.transactionHash || '';
-          
-          // Parse the data field to extract randomness
-          // The data field contains all non-indexed parameters
-          // In this case, it contains randomness (uint256) and status (uint8)
-          const data = log.data || '0x0';
-          console.log('Raw data from event:', data);
-          
-          // Extract randomness from data (first 32 bytes after '0x')
-          // For uint256, it's a 32-byte value
-          const randomnessHex = data.length >= 66 ? data.substring(0, 66) : '0x0';
-          const randomness = BigInt(randomnessHex);
-          console.log('Extracted randomness:', randomness.toString());
-          
-          // Get the public client
-          const publicClient = getPublicClient(config);
-          
-          // Get the transaction receipt to extract the block number
-          const receipt = await publicClient.getTransactionReceipt({
-            hash: txHash as `0x${string}`
-          });
-          
-          // Get the block to extract the timestamp
-          const block = await publicClient.getBlock({
-            blockNumber: receipt.blockNumber
-          });
-          
-          // Extract timestamp from block (in seconds, convert to milliseconds)
-          const blockTimestamp = Number(block.timestamp) * 1000;
-          
-          // Update store with randomness and reset isWaitingForStep4 flag
-          randomNumberStore.update((state: RandomNumberState) => ({
-            ...state,
-            isWaitingForRandomness: false,
-            isWaitingForStep4: false,
-            randomNumber: randomness.toString(),
-            responseTxHash: txHash,
-            responseTimestamp: blockTimestamp // Use actual block timestamp
-          }));
-        } catch (error) {
-          console.error('Error extracting randomness from event:', error);
-          // Use a fallback random number for demo purposes
-          const fallbackRandomness = BigInt(Math.floor(Math.random() * 1000000));
-          // For fallback/demo, still use the current time
-          const currentTime = Date.now();
-          randomNumberStore.update((state: RandomNumberState) => ({
-            ...state,
-            isWaitingForRandomness: false,
-            isWaitingForStep4: false,
-            randomNumber: fallbackRandomness.toString(),
-            responseTxHash: 'simulated-tx-' + currentTime,
-            responseTimestamp: currentTime
-          }));
-        }
-
+        await processRandomnessReceivedLogs(logs, network);
         // Unsubscribe from this event
         unwatch();
       }
@@ -317,6 +309,156 @@ async function listenForRandomnessReceived(requestId: string) {
   } catch (error) {
     console.error('Error listening for randomness received:', error);
   }
+}
+
+// Helper function to process RandomnessReceived logs
+async function processRandomnessReceivedLogs(logs: any[], network: NetworkConfig) {
+  try {
+    // Extract data from the log
+    const log = logs[0];
+    const txHash = log.transactionHash || '';
+    
+    // Parse the data field to extract randomness
+    const data = log.data || '0x0';
+    console.log('Raw data from event:', data);
+    
+    // Extract randomness from data (first 32 bytes after '0x')
+    const randomnessHex = data.length >= 66 ? data.substring(0, 66) : '0x0';
+    const randomness = BigInt(randomnessHex);
+    console.log('Extracted randomness:', randomness.toString());
+    
+    // Get the public client
+    const publicClient = getPublicClient(config);
+    
+    // Get the transaction receipt to extract the block number
+    const receipt = await publicClient.getTransactionReceipt({
+      hash: txHash as `0x${string}`
+    });
+    
+    // Get the block to extract the timestamp
+    const block = await publicClient.getBlock({
+      blockNumber: receipt.blockNumber
+    });
+    
+    // Extract timestamp from block (in seconds, convert to milliseconds)
+    const blockTimestamp = Number(block.timestamp) * 1000;
+    
+    // Update store with randomness and reset isWaitingForStep4 flag
+    randomNumberStore.update((state: RandomNumberState) => ({
+      ...state,
+      isWaitingForRandomness: false,
+      isWaitingForStep4: false,
+      randomNumber: randomness.toString(),
+      responseTxHash: txHash,
+      responseTimestamp: blockTimestamp // Use actual block timestamp
+    }));
+  } catch (error) {
+    console.error('Error extracting randomness from event:', error);
+    // Use a fallback random number for demo purposes
+    const fallbackRandomness = BigInt(Math.floor(Math.random() * 1000000));
+    // For fallback/demo, still use the current time
+    const currentTime = Date.now();
+    randomNumberStore.update((state: RandomNumberState) => ({
+      ...state,
+      isWaitingForRandomness: false,
+      isWaitingForStep4: false,
+      randomNumber: fallbackRandomness.toString(),
+      responseTxHash: 'simulated-tx-' + currentTime,
+      responseTimestamp: currentTime
+    }));
+  }
+}
+
+// Polling function specifically for Optimism Sepolia
+async function pollForRandomnessReceivedEvent(requestId: string, network: NetworkConfig) {
+  console.log('Starting polling for RandomnessReceived event on Optimism Sepolia');
+  
+  // Get the public client
+  const publicClient = getPublicClient(config);
+  
+  // Maximum number of attempts (3 minutes with 5-second intervals)
+  const maxAttempts = 36;
+  let attempts = 0;
+  
+  // Start polling
+  const pollInterval = setInterval(async () => {
+    attempts++;
+    console.log(`Polling attempt ${attempts}/${maxAttempts} for RandomnessReceived event`);
+    
+    try {
+      // Get the current block number
+      const blockNumber = await publicClient.getBlockNumber();
+      
+      // Look back up to 100 blocks to find the event
+      const fromBlock = blockNumber - BigInt(100) > 0 ? blockNumber - BigInt(100) : BigInt(0);
+      
+      // Query for the RandomnessReceived event
+      const logs = await publicClient.getLogs({
+        address: network.vrfRequestAddress as `0x${string}`,
+        event: {
+          type: 'event',
+          name: 'RandomnessReceived',
+          inputs: [
+            { type: 'bytes32', name: 'requestId', indexed: true },
+            { type: 'uint256', name: 'randomness' },
+            { type: 'uint8', name: 'status' }
+          ]
+        },
+        args: {
+          requestId: requestId as `0x${string}`
+        },
+        fromBlock,
+        toBlock: blockNumber
+      });
+      
+      // If we found the event
+      if (logs.length > 0) {
+        console.log('Found RandomnessReceived event through polling:', logs);
+        clearInterval(pollInterval);
+        await processRandomnessReceivedLogs(logs, network);
+        return;
+      }
+      
+      // If we've reached the maximum number of attempts
+      if (attempts >= maxAttempts) {
+        console.log('Reached maximum polling attempts, stopping poll');
+        clearInterval(pollInterval);
+        
+        // Use a fallback random number
+        const fallbackRandomness = BigInt(Math.floor(Math.random() * 1000000));
+        const currentTime = Date.now();
+        
+        randomNumberStore.update((state: RandomNumberState) => ({
+          ...state,
+          isWaitingForRandomness: false,
+          isWaitingForStep4: false,
+          randomNumber: fallbackRandomness.toString(),
+          responseTxHash: 'simulated-tx-' + currentTime,
+          responseTimestamp: currentTime
+        }));
+      }
+    } catch (error) {
+      console.error('Error during polling for RandomnessReceived event:', error);
+      
+      // If there's an error, we'll continue polling until max attempts
+      if (attempts >= maxAttempts) {
+        clearInterval(pollInterval);
+        
+        // Use a fallback random number
+        const fallbackRandomness = BigInt(Math.floor(Math.random() * 1000000));
+        const currentTime = Date.now();
+        
+        randomNumberStore.update((state: RandomNumberState) => ({
+          ...state,
+          isWaitingForRandomness: false,
+          isWaitingForStep4: false,
+          randomNumber: fallbackRandomness.toString(),
+          responseTxHash: 'simulated-tx-' + currentTime,
+          responseTimestamp: currentTime
+        }));
+      }
+    }
+  }, 5000); // Poll every 5 seconds
 }
 
 // Steps 2 and 3: Listen for events on Random Network

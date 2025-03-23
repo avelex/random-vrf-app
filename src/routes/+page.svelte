@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { walletStore, connectWallet, formatAddress, initWallet, switchToArbitrumSepolia, checkNetwork } from '$lib/web3/wallet';
+  import { walletStore, networkStore, connectWallet, formatAddress, initWallet, switchToNetwork, checkNetwork } from '$lib/web3/wallet';
   import { randomNumberStore, requestRandomNumber, formatRandomNumber } from '$lib/web3/contracts';
-  import { EXPLORER_URL, RANDOM_EXPLORER_URL } from '$lib/web3/config';
+  import { RANDOM_EXPLORER_URL } from '$lib/web3/config';
+  import type { NetworkConfig } from '$lib/web3/config';
 
   // For copy functionality
   type CopyState = {
@@ -32,20 +33,26 @@
       return;
     }
     
-    // Check if on Arbitrum Sepolia network
+    // Check if on a supported network
     const isCorrectNetwork = await checkNetwork();
     if (!isCorrectNetwork) {
       // If not on correct network, prompt to switch
-      const switchConfirmed = confirm('You need to be on Arbitrum Sepolia network to use this feature. Would you like to switch networks now?');
+      const selectedNetwork = $networkStore.selectedNetwork;
+      const switchConfirmed = confirm(`You need to be on ${selectedNetwork.name} network to use this feature. Would you like to switch networks now?`);
       
       if (switchConfirmed) {
-        switchToArbitrumSepolia();
+        switchToNetwork(selectedNetwork);
       }
       return;
     }
     
     // If all checks pass, request the random number
     requestRandomNumber();
+  }
+  
+  // Handle network selection change
+  function handleNetworkChange(network: NetworkConfig) {
+    switchToNetwork(network);
   }
 
   async function copyToClipboard(text: string, type: keyof CopyState) {
@@ -103,44 +110,167 @@
 <div class="container">
   <header class="header">
     <div class="logo">RANDOM VRF</div>
-    <button 
-      class="button" 
-      on:click={handleConnectWallet} 
-      disabled={$walletStore.isConnecting}
-    >
-      {#if $walletStore.isConnecting}
-        Connecting...
-      {:else if $walletStore.isConnected}
-        {formatAddress($walletStore.address)}
-      {:else}
-        Connect Wallet
+    <div class="header-right">
+      {#if $walletStore.isConnected}
+        <div class="network-dropdown">
+          <select 
+            class="network-select button"
+            value={$walletStore.currentNetwork?.chainId} 
+            on:change={(e) => {
+              const target = e.target as HTMLSelectElement;
+              const selectedNetwork = $networkStore.networks.find(network => network.chainId === parseInt(target.value));
+              if (selectedNetwork) handleNetworkChange(selectedNetwork);
+            }}
+          >
+            {#each $networkStore.networks as network}
+              <option value={network.chainId}>{network.name}</option>
+            {/each}
+          </select>
+          <span class="dropdown-arrow">▼</span>
+        </div>
       {/if}
-    </button>
+      <button 
+        class="button" 
+        on:click={handleConnectWallet} 
+        disabled={$walletStore.isConnecting}
+      >
+        {#if $walletStore.isConnecting}
+          Connecting...
+        {:else if $walletStore.isConnected}
+          {formatAddress($walletStore.address)}
+        {:else}
+          Connect Wallet
+        {/if}
+      </button>
+    </div>
   </header>
 
   <main class="main">
     
-    {#if $walletStore.isConnected && $walletStore.chainId !== null && !$walletStore.isArbitrumSepolia}
-      <div class="network-warning">
-        <p>Please switch to Arbitrum Sepolia network to use this app</p>
-        <p class="network-debug">Current network: Chain ID {$walletStore.chainId}</p>
-      </div>
-    {/if}
-
-    <button 
-      class="button" 
-      on:click={$walletStore.isConnected && !$walletStore.isArbitrumSepolia ? switchToArbitrumSepolia : handleRequestRandomness}
-      disabled={!$walletStore.isConnected || ($randomNumberStore.isRequesting && $walletStore.isArbitrumSepolia)}
-    >
-      {#if $randomNumberStore.isRequesting}
-        Requesting...
-      {:else if !$walletStore.isArbitrumSepolia && $walletStore.isConnected}
-        Switch to Arbitrum Sepolia
-      {:else}
-        Give me Random Number
+    <div class="header-container">
+      {#if $walletStore.isConnected && $walletStore.chainId !== null && !$walletStore.isSupportedNetwork}
+        <div class="network-warning">
+          <p>Please switch to a supported network to use this app</p>
+          <p class="network-debug">Current network: {$walletStore.currentNetwork?.name || 'Unknown'} (Chain ID {$walletStore.chainId})</p>
+        </div>
       {/if}
-    </button>
 
+
+      
+      <!-- Main Button -->
+      <button 
+        class="button main-button" 
+        on:click={$walletStore.isConnected && !$walletStore.isSupportedNetwork ? 
+          () => switchToNetwork($networkStore.selectedNetwork) : 
+          handleRequestRandomness}
+        disabled={!$walletStore.isConnected || ($randomNumberStore.isRequesting && $walletStore.isSupportedNetwork)}
+      >
+        {#if $randomNumberStore.isRequesting}
+          Requesting...
+        {:else if !$walletStore.isSupportedNetwork && $walletStore.isConnected}
+          Switch to {$networkStore.selectedNetwork.name}
+        {:else}
+          Give me Random Number
+        {/if}
+      </button>
+    </div>
+
+<style>
+  .header-container {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+
+  
+  .main-button {
+    display: block;
+    margin: 0 auto 20px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: white;
+    color: #000;
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .logo {
+    font-family: var(--logo-font-family);
+    font-size: 52px;
+    letter-spacing: 1px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    color: #000;
+  }
+  
+  .network-dropdown {
+    position: relative;
+  }
+
+  .network-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: white;
+    color: black;
+    padding: 10px 30px 10px 15px;
+    border: 1px solid black;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    min-width: 180px;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .network-select:focus {
+    outline: none;
+  }
+  
+  .network-select:hover {
+    background-color: white;
+    border-color: #333;
+  }
+
+  .network-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .dropdown-arrow {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: black;
+    font-size: 8px;
+  }
+
+  .network-warning {
+    background-color: #ffdddd;
+    border-left: 6px solid #f44336;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+
+  .network-debug {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 5px;
+  }
+</style>
     {#if $randomNumberStore.requestId || $randomNumberStore.isRequesting}
       <div class="info-box">
         <!-- Request ID with copy button -->
@@ -170,7 +300,7 @@
               <div class="status-indicator">
                 <div class="success-mark">✓</div>
                 <a 
-                  href="{EXPLORER_URL + $randomNumberStore.txHash}" 
+                  href="{($walletStore.currentNetwork?.explorerUrl || '') + ($randomNumberStore.txHash || '')}" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   class="explorer-link"
@@ -251,7 +381,7 @@
               <div class="status-indicator">
                 <div class="success-mark">✓</div>
                 <a 
-                  href="{EXPLORER_URL + ($randomNumberStore.responseTxHash || $randomNumberStore.txHash)}" 
+                  href="{($walletStore.currentNetwork?.explorerUrl || '') + ($randomNumberStore.responseTxHash || $randomNumberStore.txHash || '')}" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   class="explorer-link"
