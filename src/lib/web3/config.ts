@@ -17,7 +17,7 @@ export const SUPPORTED_NETWORKS: NetworkConfig[] = [
   {
     chainId: arbitrumSepolia.id, // 421614
     name: 'Arbitrum Sepolia',
-    rpcUrl: 'https://arbitrum-sepolia.infura.io/v3/18dc852a5a164c14bfd0777052c107a0',
+    rpcUrl: 'https://arbitrum-sepolia-rpc.publicnode.com',
     explorerUrl: 'https://sepolia.arbiscan.io/tx/',
     vrfRequestClientAddress: '0x64842c038db9aF44D29D2A27EF50dBBa6f7E43Bb',
     vrfRequestAddress: '0x008635105b348396B6ccD18BB715A9b6Db0E0D12',
@@ -26,7 +26,7 @@ export const SUPPORTED_NETWORKS: NetworkConfig[] = [
   {
     chainId: sepolia.id, // 11155111
     name: 'Ethereum Sepolia',
-    rpcUrl: 'https://sepolia.infura.io/v3/cce51b0782b44680b492486884fdaba0',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     explorerUrl: 'https://sepolia.etherscan.io/tx/',
     vrfRequestClientAddress: '0xBD16beD149AA683252748C498F348Fe4b0b1A031',
     vrfRequestAddress: '0xa6334941d20b76af46379606a80F73a9c1406586'
@@ -34,7 +34,7 @@ export const SUPPORTED_NETWORKS: NetworkConfig[] = [
   {
     chainId: optimismSepolia.id, // 11155420
     name: 'Optimism Sepolia',
-    rpcUrl: 'https://optimism-sepolia.infura.io/v3/cce51b0782b44680b492486884fdaba0',
+    rpcUrl: 'https://optimism-sepolia-rpc.publicnode.com',
     explorerUrl: 'https://sepolia-optimism.etherscan.io/tx/',
     vrfRequestClientAddress: '0xBD16beD149AA683252748C498F348Fe4b0b1A031',
     vrfRequestAddress: '0xa6334941d20b76af46379606a80F73a9c1406586'
