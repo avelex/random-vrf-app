@@ -284,9 +284,9 @@ async function listenForRandomnessReceived(requestId: string) {
     // After the null check, currentNetwork is definitely a NetworkConfig
     const network: NetworkConfig = currentNetwork;
     
-    // For Optimism Sepolia, we'll use a more robust approach with polling
-    if (network.chainId === 11155420) { // Optimism Sepolia chain ID
-      console.log('Using enhanced polling method for Optimism Sepolia');
+    // For Optimism Sepolia and Arbitrum Sepolia, we'll use a more robust approach with polling
+    if (network.chainId === 11155420 || network.chainId === 421614) { // Optimism Sepolia or Arbitrum Sepolia chain ID
+      console.log(`Using enhanced polling method for ${network.name}`);
       await pollForRandomnessReceivedEvent(requestId, network);
       return;
     }
@@ -369,9 +369,9 @@ async function processRandomnessReceivedLogs(logs: any[], network: NetworkConfig
   }
 }
 
-// Polling function specifically for Optimism Sepolia
+// Polling function for reliable event detection
 async function pollForRandomnessReceivedEvent(requestId: string, network: NetworkConfig) {
-  console.log('Starting polling for RandomnessReceived event on Optimism Sepolia');
+  console.log(`Starting polling for RandomnessReceived event on ${network.name}`);
   
   // Get the public client
   const publicClient = getPublicClient(config);

@@ -6,26 +6,33 @@
   font-display: swap;
 }
 
+/* Import Onest font */
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap');
+
 :root {
-  --color-bg: #ffffff;
+  --color-bg: #ECF0F3;
   --color-text: #000000;
   --color-border: #000000;
-  --color-button-bg: #000000;
-  --color-button-text: #ffffff;
-  --color-button-hover: #333333;
+  --color-button-bg: #E3E6ED;
+  --color-button-text: #7C8492;
+  --color-button-hover: #D6DAE3;
   --font-family: 'Roboto', sans-serif;
   --logo-font-family: 'Soyuz Grotesk', sans-serif;
 }
 
-body {
+html, body {
   font-family: var(--font-family);
-  background-color: var(--color-bg);
   color: var(--color-text);
   margin: 0;
   padding: 0;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  background-image: url('/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .container {
@@ -42,17 +49,17 @@ body {
   align-items: center;
   padding: 1rem 0;
   margin-bottom: 2rem;
+  background-color: transparent;
 }
 
 .logo {
   font-family: var(--logo-font-family);
-  font-size: 52px;
+  font-size: 90px;
   letter-spacing: 1px;
   line-height: 1;
   display: flex;
   align-items: center;
-  color: #000;
-  /* text-shadow: 1px 1px 0 rgba(0,0,0,0.15); */
+  color: #7C8492;
   font-weight: bold;
 }
 
@@ -71,44 +78,60 @@ h1 {
 }
 
 .button {
-  background-color: var(--color-button-bg);
-  color: var(--color-button-text);
+  background-color: #E3E6ED;
+  color: #7C8492;
   border: none;
   padding: 0.75rem 1.5rem;
   font-size: 1.2rem;
   cursor: pointer;
-  transition: background-color 0.2s;
-  border-radius: 8px;
+  transition: all 0.2s ease;
+  border-radius: 60px;
   height: 48px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  font-family: 'Onest', sans-serif;
+  box-shadow: -12px -12px 20px #FFFFFF, 12px 12px 15px #D1D9E6;
 }
 
 .button:hover {
-  background-color: var(--color-button-hover);
+  background-color: #D6DAE3;
+  box-shadow: -14px -14px 25px #FFFFFF, 14px 14px 25px #D1D9E6;
 }
 
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: -10px -10px 20px #FFFFFF, 10px 10px 20px #D1D9E6;
 }
 
 .info-box {
-  border: 2px solid var(--color-border);
+  background-color: #ECF0F3;
   padding: 1.5rem;
   margin: 1rem 0;
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
   box-sizing: border-box;
-  border-radius: 6px;
+  border-radius: 41px;
+  border: none;
+  box-shadow: inset -18px -18px 30px #FFFFFF, inset 18px 18px 30px #D1D9E6;
+  font-family: 'Onest', sans-serif;
+  color: #7C8492;
+  font-weight: 400;
+  text-align: left;
 }
 
 .step-container {
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: none;
   width: 100%;
-  padding-left: 0.5rem;
+  padding-left: 1rem;
+  font-family: 'Onest', sans-serif;
+  color: #7C8492;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .step-container:last-child {
@@ -120,40 +143,60 @@ h1 {
 .step-header {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
+  margin-bottom: 0.3rem;
+  font-weight: 400;
   font-size: 1.1rem;
+  font-family: 'Onest', sans-serif;
+  color: #7C8492;
 }
 
 .step-content {
-  margin-left: 0;
-  padding-top: 0.5rem;
+  margin-left: 1.5rem;
+  padding-top: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .copy-wrapper {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
-  margin: 0.5rem 0;
+  margin: 0.3rem 0;
   font-size: 1.2rem;
-  font-weight: 700;
-  padding-left: 0.5rem;
+  font-weight: 400;
+  padding-left: 0;
+  font-family: 'Onest', sans-serif;
+  color: #7C8492;
 }
 
 .copy-button {
   background: transparent;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  font-size: 1rem;
   border-radius: 4px;
-  padding: 0.25rem 0.5rem;
+  padding: 0.4rem;
   cursor: pointer;
-  font-size: 0.8rem;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .copy-button:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+.copy-icon {
+  color: #7C8492;
+}
+
+.copied-text {
+  font-size: 0.8rem;
+  color: #4CAF50;
 }
 
 .status-indicator {
@@ -178,17 +221,20 @@ h1 {
 
 .explorer-link {
   font-size: 0.85rem;
+  color: #7C8492;
+  font-family: 'Onest', sans-serif;
 }
 
 .time-indicator {
   font-size: 0.85rem;
   margin-left: 0.5rem;
-  color: #666;
+  color: #7C8492;
+  font-family: 'Onest', sans-serif;
 }
 
 .separator {
   margin: 1.5rem 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: none;
   width: 100%;
 }
 
@@ -196,6 +242,13 @@ h1 {
   font-size: 2.0rem;
   /* text-shadow: 1px 1px 0 rgba(0,0,0,0.15); */
   letter-spacing: 1px;
+  font-family: 'Onest', sans-serif;
+  color: #7C8492;
+  font-weight: 700;
+  text-align: left;
+  display: flex;
+  justify-content: flex-start;
+  margin-left: 1.0rem;
 }
 
 .loading {

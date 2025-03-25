@@ -126,7 +126,6 @@
               <option value={network.chainId}>{network.name}</option>
             {/each}
           </select>
-          <span class="dropdown-arrow">▼</span>
         </div>
       {/if}
       <button 
@@ -145,7 +144,7 @@
     </div>
   </header>
 
-  <main class="main">
+  <main class="main" style="min-height: 80vh; position: relative;">
     
     <div class="header-container">
       {#if $walletStore.isConnected && $walletStore.chainId !== null && !$walletStore.isSupportedNetwork}
@@ -158,13 +157,14 @@
 
       
       <!-- Main Button -->
-      <button 
-        class="button main-button" 
-        on:click={$walletStore.isConnected && !$walletStore.isSupportedNetwork ? 
-          () => switchToNetwork($networkStore.selectedNetwork) : 
-          handleRequestRandomness}
-        disabled={!$walletStore.isConnected || ($randomNumberStore.isRequesting && $walletStore.isSupportedNetwork)}
-      >
+      <div class="button-container {$randomNumberStore.txHash ? 'moved' : ''}">
+        <button 
+          class="button main-button" 
+          on:click={$walletStore.isConnected && !$walletStore.isSupportedNetwork ? 
+            () => switchToNetwork($networkStore.selectedNetwork) : 
+            handleRequestRandomness}
+          disabled={!$walletStore.isConnected || ($randomNumberStore.isRequesting && $walletStore.isSupportedNetwork)}
+        >
         {#if $randomNumberStore.isRequesting}
           Requesting...
         {:else if !$walletStore.isSupportedNetwork && $walletStore.isConnected}
@@ -172,20 +172,36 @@
         {:else}
           Give me Random Number
         {/if}
-      </button>
+        </button>
+      </div>
     </div>
 
 <style>
   .header-container {
     width: 100%;
     margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
 
   
+  .button-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 0;
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
   .main-button {
     display: block;
-    margin: 0 auto 20px;
+    min-width: 280px;
   }
 
   .header {
@@ -193,8 +209,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    background-color: white;
-    color: #000;
+    background-color: transparent;
+    color: #fff;
   }
   
   .header-right {
@@ -205,12 +221,13 @@
   
   .logo {
     font-family: var(--logo-font-family);
-    font-size: 52px;
+    font-size: 70px;
     letter-spacing: 1px;
     line-height: 1;
     display: flex;
     align-items: center;
-    color: #000;
+    color: #7C8492;
+    font-weight: bold;
   }
   
   .network-dropdown {
@@ -221,16 +238,25 @@
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-color: white;
-    color: black;
-    padding: 10px 30px 10px 15px;
-    border: 1px solid black;
-    border-radius: 4px;
-    font-size: 14px;
+    background-color: #E3E6ED;
+    color: #7C8492;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 60px;
+    font-size: 1.2rem;
     cursor: pointer;
-    min-width: 180px;
-    font-weight: bold;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    min-width: 220px;
+    font-weight: normal;
+    font-family: 'Onest', sans-serif;
+    box-shadow: -12px -12px 20px #FFFFFF, 12px 12px 20px #D1D9E6;
+    transition: all 0.2s ease;
+    height: 48px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Additional properties to ensure no arrow appears */
+    background-image: none;
   }
 
   .network-select:focus {
@@ -238,24 +264,17 @@
   }
   
   .network-select:hover {
-    background-color: white;
-    border-color: #333;
+    background-color: #D6DAE3;
+    box-shadow: -14px -14px 25px #FFFFFF, 14px 14px 25px #D1D9E6;
   }
 
   .network-dropdown {
     position: relative;
     display: inline-block;
+    margin-right: 13px;
   }
   
-  .dropdown-arrow {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: black;
-    font-size: 8px;
-  }
+  /* Removed dropdown arrow */
 
   .network-warning {
     background-color: #ffdddd;
@@ -270,9 +289,35 @@
     color: #666;
     margin-top: 5px;
   }
+  
+  /* Use the global info-box styles from styles.css and just add positioning */
+  .processing-container {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    width: 100%;
+    max-width: 620px;
+  }
+  
+  .random-number {
+    font-size: 2.0rem;
+    font-weight: bold;
+    margin: 10px 0;
+    margin-left: 1.0rem;  
+    color: #7C8492;
+    text-align: left;
+    z-index: 20;
+  }
+  
+  .button-container.moved {
+    top: 75%;
+  }
 </style>
-    {#if $randomNumberStore.requestId || $randomNumberStore.isRequesting}
-      <div class="info-box">
+    {#if $randomNumberStore.txHash}
+      <div class="processing-container">
+        <div class="info-box">
         <!-- Request ID with copy button -->
         {#if $randomNumberStore.requestId}
           <div class="step-container">
@@ -281,8 +326,16 @@
               <button 
                 class="copy-button" 
                 on:click={() => copyToClipboard($randomNumberStore.requestId || '', 'requestId')}
+                title="Copy to clipboard"
               >
-                {copyState.requestId ? 'Copied!' : 'Copy'}
+                {#if copyState.requestId}
+                  <span class="copied-text">Copied!</span>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                {/if}
               </button>
             </div>
           </div>
@@ -404,11 +457,20 @@
             <button 
               class="copy-button" 
               on:click={() => copyToClipboard($randomNumberStore.randomNumber || '', 'randomNumber')}
+              title="Copy to clipboard"
             >
-              {copyState.randomNumber ? 'Copied!' : 'Copy'}
+              {#if copyState.randomNumber}
+                <span class="copied-text">Copied!</span>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              {/if}
             </button>
           </div>
         {/if}
+        </div>
       </div>
     {/if}
 
