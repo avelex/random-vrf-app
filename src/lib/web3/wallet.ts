@@ -88,18 +88,14 @@ export async function checkNetwork() {
         chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
         // Convert hex to decimal
         chainId = parseInt(chainIdHex, 16);
-        console.log('MetaMask chainId (hex):', chainIdHex);
-        console.log('MetaMask chainId (decimal):', chainId);
       } catch (err) {
         console.error('Error getting chain ID from MetaMask:', err);
         // Fall back to Wagmi if MetaMask direct access fails
         chainId = getChainId(config);
-        console.log('Fallback chainId:', chainId);
       }
     } else {
       // Fall back to Wagmi if no MetaMask
       chainId = getChainId(config);
-      console.log('Wagmi chainId:', chainId);
     }
     
     // Get the current network config based on chain ID
@@ -107,8 +103,6 @@ export async function checkNetwork() {
     
     // Check if it's a supported network
     const isSupportedNetwork = SUPPORTED_NETWORKS.some(network => network.chainId === chainId);
-    console.log('Current network:', currentNetwork.name);
-    console.log('Is supported network:', isSupportedNetwork);
     
     // Update the stores
     walletStore.update((state: WalletState) => ({
